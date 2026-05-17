@@ -1,0 +1,32 @@
+data:
+  train_raw: datasets/raw/Train.csv
+  test_raw: datasets/raw/Test.csv
+  train_clean: datasets/cleaned/train_clean.csv
+  test_clean: datasets/cleaned/test_clean.csv
+  stopwords: datasets/stopwords/vietnamese-stopwords.txt
+
+tfidf:
+  max_features: 3000
+  ngram_range: [1, 2]
+  min_df: 2
+  max_df: 0.95
+  sublinear_tf: true
+
+kmeans:
+  k_range: [2, 10]
+  random_state: 42
+  n_init: 10
+  anomaly_threshold_pct: 5
+
+svm:
+  C: 1.0
+  max_iter: 2000
+  class_weight: balanced
+  cv_folds: 5
+  random_state: 42
+
+results:
+  models_dir: results/models/
+  csv_dir: results/csv/
+  figures_dir: results/figures/
+  logs_dir: results/logs/
