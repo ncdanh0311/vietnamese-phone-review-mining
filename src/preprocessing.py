@@ -48,27 +48,31 @@ def full_pipeline(text, stop_words):
 
 def assign_overall_label(row):
     p, n, neu = row['positive_count'], row['negative_count'], row['neutral_count']
-    if p > neu and p > n:   return 'Positive'
-    elif n > neu and n > p: return 'Negative'
-    elif n == neu:          return 'Negative'
-    elif neu == p:          return 'Positive'
-    else:                   return 'Neutral'
-
-
-def extract_main_aspect(label_str):
-    matches = re.findall(r'\{(\w+)#(\w+)\}', str(label_str))
-    if not matches:
-        return 'OTHERS'
-    for aspect, _ in matches:
-        if aspect != 'OTHERS':
-            return aspect
-    return 'OTHERS'
+    if p > neu and p > n:
+        return 'Positive'
+    if n > neu and n > p:
+        return 'Negative'
+    if n == neu:
+        return 'Negative'
+    if neu == p:
+        return 'Positive'
+    return 'Neutral'
 
 
 def extract_aspects_list(label_str: str) -> List[Tuple[str, str]]:
     """Return all aspect-sentiment pairs, including names such as SER&ACC."""
     matches = re.findall(r'\{([^#{};]+)#(Positive|Negative|Neutral)\}', str(label_str))
     return [(aspect.strip(), sentiment.strip()) for aspect, sentiment in matches]
+
+
+def extract_main_aspect(label_str):
+    aspects = extract_aspects_list(label_str)
+    if not aspects:
+        return 'OTHERS'
+    for aspect, _ in aspects:
+        if aspect != 'OTHERS':
+            return aspect
+    return 'OTHERS'
 
 
 def count_sentiments(label_str: str) -> Tuple[int, int, int]:
@@ -115,17 +119,17 @@ def preprocess_dataframe(
 def preprocessing_steps_example(text: str, stop_words: Iterable[str]) -> pd.DataFrame:
     rows = []
     current = str(text)
-    rows.append(('Trước', current))
+    rows.append(('Before', current))
     current = current.lower()
-    rows.append(('Sau bước 1 (lowercase)', current))
+    rows.append(('Step 1: lowercase', current))
     current = remove_punctuation(current)
-    rows.append(('Sau bước 2 (remove_punctuation)', current))
+    rows.append(('Step 2: remove punctuation', current))
     current = normalize_numbers(current)
-    rows.append(('Sau bước 3 (normalize_numbers)', current))
+    rows.append(('Step 3: normalize numbers', current))
     current = remove_stopword(current, stop_words)
-    rows.append(('Sau bước 4 (remove_stopword)', current))
+    rows.append(('Step 4: remove stopwords', current))
     current = ViTokenizer.tokenize(current)
-    rows.append(('Sau bước 5 (tokenize)', current))
+    rows.append(('Step 5: tokenize', current))
     current = remove_repeated_words(current)
-    rows.append(('Sau bước 6 (remove_repeated)', current))
-    return pd.DataFrame(rows, columns=['Bước', 'Kết quả'])
+    rows.append(('Step 6: remove repeated words', current))
+    return pd.DataFrame(rows, columns=['Step', 'Result'])

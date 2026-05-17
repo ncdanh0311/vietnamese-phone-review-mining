@@ -47,7 +47,7 @@ def cross_validate_svm(X, y, cv=5):
     scores = cross_val_score(model, X, y, cv=splitter, scoring='f1_macro')
     for idx, score in enumerate(scores, start=1):
         print(f'Fold {idx}: F1 Macro = {score:.4f}')
-    print(f'Mean ± Std: {scores.mean():.4f} ± {scores.std():.4f}')
+    print(f'Mean +/- Std: {scores.mean():.4f} +/- {scores.std():.4f}')
     return scores
 
 
@@ -73,8 +73,8 @@ def plot_confusion_matrix(model, X_test, y_test, labels, save_path):
     plt.figure(figsize=(7, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
     plt.title('Confusion Matrix - LinearSVC')
-    plt.xlabel('Nhãn dự đoán')
-    plt.ylabel('Nhãn thật')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
     plt.tight_layout()
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(save_path, dpi=150)

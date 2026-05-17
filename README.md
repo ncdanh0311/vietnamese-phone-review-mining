@@ -1,65 +1,32 @@
-# Topic Clustering and Sentiment Analysis for Vietnamese Phone Reviews
+# Vietnamese Phone Review Topic Clustering and Sentiment Analysis
 
-## 1. Student Information
+## 1. Overview
 
-| Student ID | Full Name | Class | Email |
-|---|---|---|---|
-|  |  |  |  |
+This project mines Vietnamese phone review data from the UIT-ViSFD dataset. The pipeline combines two main approaches:
 
-## 2. Project Overview
+- **K-Means clustering** to group reviews into topic clusters based on TF-IDF features.
+- **LinearSVC sentiment classification** to classify overall sentiment into `Positive`, `Negative`, and `Neutral`.
 
-This project applies text mining and machine learning techniques to Vietnamese phone customer reviews. The pipeline includes text preprocessing, TF-IDF feature extraction, topic clustering with K-Means, and sentiment classification with LinearSVC.
+The notebooks are used to present and analyze each step. The `.py` files in `src/` keep the core logic reusable, testable, and runnable through the full pipeline with `python main.py`.
 
-The project focuses on three main goals:
+## 2. Dataset
 
-- Discover review topics automatically using unsupervised clustering.
-- Classify overall sentiment into Positive, Negative, and Neutral.
-- Identify which product aspects receive the most negative feedback.
+Dataset source: [UIT-ViSFD](https://github.com/LuongPhan/UIT-ViSFD)
 
-## 3. Research Questions
+| Dataset | Path | Samples |
+|---|---|---:|
+| Train | `datasets/raw/Train.csv` | 7,786 |
+| Test | `datasets/raw/Test.csv` | 2,224 |
 
-1. Can K-Means group Vietnamese phone reviews into topics that are similar to the real aspect labels?
-2. How well does SVM perform in classifying sentiment into Positive, Negative, and Neutral?
-3. Which review topic receives the highest proportion of negative customer feedback?
-
-## 4. Data Information:
-Data Information:
-Train Data: 7,786 samples
-Dev: 1,112 samples
-Test Data: 2,224 samples
-Link: [Dataset](https://github.com/LuongPhan/UIT-ViSFD?tab=readme-ov-file)
-
-Input files:
-
-```text
-datasets/raw/Train.csv
-datasets/raw/Test.csv
-datasets/stopwords/vietnamese-stopwords.txt
-```
-
-Each raw CSV file contains the following columns:
-
-| Column | Description |
-|---|---|
-| `index` | Original row index |
-| `comment` | Vietnamese customer review text |
-| `n_star` | Star rating from 1 to 5 |
-| `date_time` | Review date/time |
-| `label` | Aspect-based sentiment labels |
-
-The `label` column has an aspect-based format such as:
+Each row contains the review text, star rating, timestamp, and aspect-based labels in this format:
 
 ```text
 {CAMERA#Positive};{BATTERY#Negative};{PRICE#Neutral};
 ```
 
-Common aspects include:
+Main aspects include `CAMERA`, `BATTERY`, `FEATURES`, `PERFORMANCE`, `SCREEN`, `PRICE`, `GENERAL`, `DESIGN`, `SER&ACC`, and `OTHERS`.
 
-```text
-CAMERA, BATTERY, PRICE, FEATURES, PERFORMANCE, GENERAL, SER&ACC, OTHERS
-```
-
-## 5. Project Structure
+## 3. Cleaned Project Structure
 
 ```text
 vietnamese-phone-sentiment-mining/
@@ -70,9 +37,8 @@ vietnamese-phone-sentiment-mining/
 │   │   ├── Train.csv
 │   │   └── Test.csv
 │   ├── cleaned/
-│   │   ├── trainprocessed.csv
-│   │   └── testprocessed.csv
-│   ├── processed/
+│   │   ├── train_clean.csv
+│   │   └── test_clean.csv
 │   └── stopwords/
 │       └── vietnamese-stopwords.txt
 ├── notebooks/
@@ -82,68 +48,68 @@ vietnamese-phone-sentiment-mining/
 │   ├── 04_svm_classification.ipynb
 │   └── 05_evaluation_visualization.ipynb
 ├── src/
+│   ├── __init__.py
 │   ├── preprocessing.py
 │   ├── clustering.py
 │   ├── classification.py
 │   └── visualization.py
 ├── results/
-│   ├── models/
 │   ├── csv/
 │   ├── figures/
-│   └── logs/
+│   └── models/
 ├── main.py
 ├── requirements.txt
 ├── README.md
 └── README_VI.md
 ```
 
-## 6. Overall Pipeline
+Removed unnecessary files and folders: `src/__pycache__/`, `datasets/processed/`, `results/logs/`, `datasets/cleaned/trainprocessed.csv`, and `datasets/cleaned/testprocessed.csv`.
+
+## 4. Processing Pipeline
 
 ```text
-Raw CSV files
-  -> Exploratory Data Analysis
-  -> Text preprocessing
-  -> Overall sentiment assignment
-  -> Main aspect extraction
-  -> TF-IDF feature extraction
-  -> K-Means topic clustering
-  -> Cluster-aspect comparison
-  -> LinearSVC sentiment classification
-  -> Evaluation and business insights
+Raw CSV
+  -> EDA
+  -> Text cleaning
+  -> Overall sentiment and main_aspect assignment
+  -> TF-IDF vectorization
+  -> K-Means clustering
+  -> Cluster vs. true aspect comparison
+  -> LinearSVC classification
+  -> Evaluation and visualization
 ```
 
-## 7. Notebook Workflow
-
-| Notebook | Purpose | Main Outputs |
-|---|---|---|
-| `01_explore_dataset.ipynb` | Explore raw data, label distribution, star rating, review length, aspects, and top words | EDA figures in `results/figures/` |
-| `02_preprocessing_text.ipynb` | Clean text, assign overall sentiment, extract main aspect | `train_clean.csv`, `test_clean.csv` |
-| `03_tfidf_kmeans_clustering.ipynb` | Build TF-IDF features, choose K, run K-Means, analyze clusters | K-Means model, TF-IDF vectorizer, clustered CSV |
-| `04_svm_classification.ipynb` | Train and evaluate LinearSVC sentiment classifier | SVM model, prediction CSV, confusion matrix |
-| `05_evaluation_visualization.ipynb` | Summarize results and generate final insights | Final charts and project conclusions |
-
-## 8. Text Preprocessing
-
-The preprocessing pipeline is implemented in `src/preprocessing.py`.
-
-Steps:
+The preprocessing pipeline in `src/preprocessing.py` includes:
 
 1. Convert text to lowercase.
 2. Remove punctuation and emoji.
-3. Normalize all numbers to the token `number`.
+3. Normalize numbers into the `number` token.
 4. Remove Vietnamese stopwords.
-5. Tokenize Vietnamese text with `pyvi.ViTokenizer`.
+5. Tokenize text with `pyvi.ViTokenizer`.
 6. Remove repeated consecutive words.
+7. Parse `label` into `sentiment`, `main_aspect`, and `aspects_list`.
 
-The project also converts aspect-based labels into one overall sentiment label:
+## 5. EDA Visuals
 
-```text
-Positive / Negative / Neutral
-```
+### Sentiment Distribution
 
-## 9. TF-IDF Feature Extraction
+![Sentiment distribution](results/figures/eda_sentiment_distribution.png)
 
-TF-IDF is used to convert cleaned review text into numerical vectors. The configuration is:
+### Main Aspect Distribution
+
+![Aspect distribution](results/figures/eda_aspect_distribution.png)
+
+### Star Rating vs. Sentiment
+
+![Star vs sentiment](results/figures/eda_star_vs_sentiment.png)
+
+### Top Words in Positive and Negative Reviews
+
+![Top words](results/figures/eda_top_words_positive_negative.png)
+
+## 6. K-Means Clustering
+
+TF-IDF configuration:
 
 ```python
 TfidfVectorizer(
@@ -155,114 +121,123 @@ TfidfVectorizer(
 )
 ```
 
-`sublinear_tf=True` reduces the effect of words that appear many times in the same review.
+K-Means is tested with `K=2..10`. The best K by Silhouette Score in the current run is:
 
-## 10. K-Means Topic Clustering
-
-K-Means is used to group reviews into topics based on TF-IDF vectors.
-
-The project tests K from 2 to 10 and uses:
-
-- Elbow Method
-- Silhouette Score
-
-After clustering, each cluster is compared with the real `main_aspect` label using a crosstab table. A cluster is considered more interpretable if one aspect dominates the cluster.
-
-## 11. SVM Sentiment Classification
-
-The sentiment classifier uses:
-
-```python
-LinearSVC(C=1.0, max_iter=2000, random_state=42, class_weight="balanced")
-```
-
-The evaluation includes:
-
-- Majority-class baseline with `DummyClassifier`
-- 5-fold cross-validation
-- F1 Macro
-- F1 Weighted
-- Accuracy
-- Precision Macro
-- Recall Macro
-- Confusion Matrix
-- Error analysis
-
-`class_weight="balanced"` is used because sentiment classes may be imbalanced.
-
-## 12. Expected Results
-
-| Metric | Target |
+| Metric | Value |
 |---|---:|
-| K-Means Silhouette Score | >= 0.08 |
-| SVM F1 Macro | >= 0.75 |
-| SVM improvement over baseline | >= 10% |
-| Good cluster-aspect match | Match ratio >= 50% |
+| Best K | 10 |
+| Silhouette | 0.0086 |
 
-Actual results should be filled in after running all notebooks.
+The Silhouette Score is very low, which suggests that TF-IDF + K-Means does not separate topics clearly on this review dataset. Some clusters still have clear dominant aspects, such as clusters `0` and `6` leaning strongly toward `CAMERA`, and cluster `7` leaning toward `BATTERY`.
 
-## 13. How to Run Locally
+### Elbow and Silhouette
+
+![Elbow](results/figures/elbow.png)
+
+![Silhouette](results/figures/silhouette.png)
+
+### Cluster Size and PCA
+
+![Cluster size](results/figures/kmeans_cluster_size.png)
+
+![PCA K-Means](results/figures/pca_kmeans.png)
+
+### Sentiment by Topic Cluster
+
+![Sentiment by cluster](results/figures/sentiment_by_cluster.png)
+
+Word clouds for individual clusters are saved from `results/figures/wordcloud_cluster_0.png` to `wordcloud_cluster_9.png`.
+
+## 7. SVM Sentiment Classification
+
+The classifier uses `LinearSVC(C=1.0, class_weight="balanced", max_iter=2000)`. The baseline model is `DummyClassifier(strategy="most_frequent")`.
+
+Results after rerunning the notebooks and `main.py`:
+
+| Metric | Value |
+|---|---:|
+| Baseline F1 macro | 0.2218 |
+| SVM F1 macro | 0.6631 |
+| SVM F1 weighted | 0.8000 |
+| Accuracy | 0.8008 |
+| Precision macro | 0.6635 |
+| Recall macro | 0.6629 |
+| Cross-validation F1 macro mean | 0.6419 |
+| Cross-validation F1 macro std | 0.0131 |
+
+SVM clearly improves over the baseline, but macro F1 is still limited because the `Neutral` class has fewer samples and is harder to distinguish from mildly positive or mildly negative reviews.
+
+### Confusion Matrix
+
+![Confusion matrix](results/figures/confusion_matrix.png)
+
+## 8. Notebook Workflow
+
+All notebooks were executed successfully in this order:
+
+| Notebook | Role | Main Outputs |
+|---|---|---|
+| `01_explore_dataset.ipynb` | Explore raw data | EDA figures |
+| `02_preprocessing_text.ipynb` | Clean text and create sentiment/aspect fields | `train_clean.csv`, `test_clean.csv` |
+| `03_tfidf_kmeans_clustering.ipynb` | TF-IDF, K selection, K-Means | K-Means model, vectorizer, clustered CSV, PCA/word clouds |
+| `04_svm_classification.ipynb` | Train and evaluate SVM | SVM model, metrics, confusion matrix |
+| `05_evaluation_visualization.ipynb` | Summarize results | Insights and summary charts |
+
+## 9. How to Run
 
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Run notebooks in this order:
-
-```text
-01 -> 02 -> 03 -> 04 -> 05
-```
-
-Or run the main pipeline:
+Run the full pipeline:
 
 ```bash
 python main.py
 ```
 
-## 14. Running on Google Colab
+Run notebooks through the Jupyter UI:
 
-Upload the project zip file to Colab, then run:
-
-```python
-!unzip vietnamese-phone-sentiment-mining.zip
-%cd vietnamese-phone-sentiment-mining
-!pip install -r requirements.txt
+```bash
+python -m jupyter notebook
 ```
 
-Then open and run the notebooks in order.
+Or execute notebooks from the terminal:
 
-## 15. Running on Kaggle
-
-Upload the project zip as a Kaggle dataset/input, then run:
-
-```python
-!unzip /kaggle/input/<your-dataset-name>/vietnamese-phone-sentiment-mining.zip -d /kaggle/working/
-%cd /kaggle/working/vietnamese-phone-sentiment-mining
-!pip install -r requirements.txt
+```bash
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/01_explore_dataset.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/02_preprocessing_text.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/03_tfidf_kmeans_clustering.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/04_svm_classification.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/05_evaluation_visualization.ipynb
 ```
 
-Then run the notebooks or execute:
+## 10. Important Output Files
 
-```python
-!python main.py
-```
+| File | Meaning |
+|---|---|
+| `datasets/cleaned/train_clean.csv` | Preprocessed training data |
+| `datasets/cleaned/test_clean.csv` | Preprocessed test data |
+| `results/csv/kmeans_k_scores.csv` | Inertia and Silhouette for each K |
+| `results/csv/kmeans_cluster_summary.csv` | Dominant aspect and match ratio for each cluster |
+| `results/csv/kmeans_clustered.csv` | Training data with cluster labels |
+| `results/csv/svm_metrics_summary.csv` | Summary metrics for SVM |
+| `results/csv/svm_results.csv` | SVM predictions on the test set |
+| `results/models/tfidf_vectorizer.pkl` | Trained TF-IDF vectorizer |
+| `results/models/kmeans_model.pkl` | K-Means model |
+| `results/models/svm_model.pkl` | LinearSVC model |
 
-## 16. Limitations
+## 11. Conclusion
 
-- TF-IDF does not fully capture semantic meaning or negation.
-- K-Means can be sensitive to initialization and sparse text vectors.
-- The stopword list may miss domain-specific phone review terms.
-- Neutral sentiment is often difficult to distinguish from mild positive or mild negative reviews.
+SVM sentiment classification performs well compared with the baseline, especially in accuracy and weighted F1. However, macro F1 is around `0.6631`, showing that the model still needs improvement on smaller or more ambiguous classes.
 
-## 17. Future Work
+K-Means with TF-IDF produces a few clusters with dominant aspects, but the Silhouette Score of `0.0086` is very low. This indicates that sparse TF-IDF vectors and multi-aspect reviews make clear topic separation difficult for K-Means.
 
-- Replace TF-IDF with Vietnamese contextual embeddings such as PhoBERT.
-- Try topic modeling methods such as LDA, NMF, or BERTopic.
-- Perform aspect-level sentiment analysis instead of assigning one sentiment to the whole review.
-- Collect more data to reduce class imbalance.
+## 12. Future Work
 
-## 18. Conclusion
-
-This project provides a complete data mining workflow for Vietnamese phone reviews. It combines unsupervised topic discovery with supervised sentiment classification, then connects the results to business insights about product aspects such as battery, camera, price, performance, and customer service.
+- Try PhoBERT or Vietnamese sentence embeddings instead of TF-IDF.
+- Use BERTopic, NMF, or HDBSCAN for topic modeling.
+- Move from overall sentiment classification to aspect-level sentiment analysis.
+- Balance the dataset or add more samples for the `Neutral` class.
+- Refine stopwords and add a phone-domain vocabulary.

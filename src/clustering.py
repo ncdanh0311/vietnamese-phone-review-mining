@@ -50,8 +50,8 @@ def find_optimal_k(X, k_range=range(2, 11), save_path=None):
     if plot_dir is not None:
         plt.figure(figsize=(8, 5))
         sns.lineplot(data=scores, x='k', y='inertia', marker='o')
-        plt.title('Elbow Method cho K-Means')
-        plt.xlabel('Số cụm K')
+        plt.title('Elbow Method for K-Means')
+        plt.xlabel('Number of clusters (K)')
         plt.ylabel('Inertia')
         plt.tight_layout()
         plt.savefig(plot_dir / 'elbow.png', dpi=150)
@@ -59,8 +59,8 @@ def find_optimal_k(X, k_range=range(2, 11), save_path=None):
 
         plt.figure(figsize=(8, 5))
         sns.lineplot(data=scores, x='k', y='silhouette', marker='o', color='darkorange')
-        plt.title('Silhouette Score theo số cụm K')
-        plt.xlabel('Số cụm K')
+        plt.title('Silhouette Score by K')
+        plt.xlabel('Number of clusters (K)')
         plt.ylabel('Silhouette Score')
         plt.tight_layout()
         plt.savefig(plot_dir / 'silhouette.png', dpi=150)
@@ -113,9 +113,9 @@ def plot_wordclouds(df, cluster_col, text_col, save_dir):
         plt.figure(figsize=(10, 6))
         plt.imshow(wc, interpolation='bilinear')
         plt.axis('off')
-        plt.title(f'WordCloud cụm {cluster_id}')
+        plt.title(f'Word cloud - cluster {cluster_id}')
         plt.tight_layout()
-        plt.savefig(save_dir / f'wordcloud_cum_{cluster_id}.png', dpi=150)
+        plt.savefig(save_dir / f'wordcloud_cluster_{cluster_id}.png', dpi=150)
         plt.close()
 
 
@@ -126,7 +126,7 @@ def plot_pca_clusters(X, labels, cluster_names, save_path):
         'PC1': points[:, 0],
         'PC2': points[:, 1],
         'cluster': labels,
-        'cluster_name': [cluster_names.get(label, f'Cụm {label}') for label in labels],
+        'cluster_name': [cluster_names.get(label, f'Cluster {label}') for label in labels],
     })
     plt.figure(figsize=(10, 7))
     sns.scatterplot(
@@ -138,10 +138,10 @@ def plot_pca_clusters(X, labels, cluster_names, save_path):
         s=18,
         alpha=0.75,
     )
-    plt.title('PCA 2D các cụm K-Means')
-    plt.xlabel('Thành phần chính 1')
-    plt.ylabel('Thành phần chính 2')
-    plt.legend(title='Chủ đề cụm', bbox_to_anchor=(1.02, 1), loc='upper left')
+    plt.title('K-Means clusters projected with PCA')
+    plt.xlabel('Principal component 1')
+    plt.ylabel('Principal component 2')
+    plt.legend(title='Cluster topic', bbox_to_anchor=(1.02, 1), loc='upper left')
     plt.tight_layout()
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(save_path, dpi=150)

@@ -1,45 +1,46 @@
-# Phân cụm chủ đề và Phân tích Cảm xúc Bình luận Điện thoại Tiếng Việt
+# Phân cụm chủ đề và phân tích cảm xúc bình luận điện thoại tiếng Việt
 
-## 1. Thông tin sinh viên
+## 1. Tổng quan
 
-| MSSV | Họ và tên | Lớp | Email |
-|---|---|---|---|
-|  |  |  |  |
+Dự án này khai phá dữ liệu bình luận điện thoại tiếng Việt từ bộ dữ liệu UIT-ViSFD. Pipeline kết hợp hai hướng:
 
-## 2. Tổng quan dự án
+- **K-Means clustering** để gom bình luận thành các cụm chủ đề dựa trên TF-IDF.
+- **LinearSVC sentiment classification** để phân loại cảm xúc tổng thể thành `Positive`, `Negative`, `Neutral`.
 
-Dự án áp dụng khai phá dữ liệu văn bản tiếng Việt trên bình luận điện thoại. Pipeline chính gồm tiền xử lý văn bản, biểu diễn TF-IDF, phân cụm chủ đề bằng K-Means và phân loại cảm xúc bằng LinearSVC.
+Notebook dùng để trình bày và phân tích từng bước. Các file `.py` trong `src/` giữ phần logic lõi để tái sử dụng, test và chạy toàn bộ pipeline bằng `python main.py`.
 
-## 3. Đặt vấn đề
+## 2. Dữ liệu
 
-1. K-Means có thể tự phân nhóm bình luận theo chủ đề tương đồng với nhãn aspect thực tế không?
-2. SVM đạt F1 bao nhiêu khi phân loại cảm xúc Positive, Negative, Neutral?
-3. Chủ đề nào nhận nhiều phản hồi tiêu cực nhất từ khách hàng?
+Nguồn dữ liệu: [UIT-ViSFD](https://github.com/LuongPhan/UIT-ViSFD)
 
-## 4. Mô tả dataset
+| Tập dữ liệu | Đường dẫn | Số mẫu |
+|---|---|---:|
+| Train | `datasets/raw/Train.csv` | 7,786 |
+| Test | `datasets/raw/Test.csv` | 2,224 |
 
-Dữ liệu gồm `Train.csv` và `Test.csv`, chứa bình luận điện thoại tiếng Việt. Mỗi dòng có 5 cột:
+Mỗi dòng gồm nội dung bình luận, số sao, thời gian và nhãn aspect-based dạng:
 
-| Cột | Ý nghĩa |
-|---|---|
-| `index` | Mã dòng trong dữ liệu gốc |
-| `comment` | Nội dung bình luận |
-| `n_star` | Số sao đánh giá từ 1 đến 5 |
-| `date_time` | Thời điểm bình luận |
-| `label` | Nhãn aspect-based, ví dụ `{CAMERA#Positive};{BATTERY#Negative};` |
+```text
+{CAMERA#Positive};{BATTERY#Negative};{PRICE#Neutral};
+```
 
-Các aspect thường gặp gồm `CAMERA`, `BATTERY`, `PRICE`, `FEATURES`, `PERFORMANCE`, `GENERAL`, `SER&ACC`, `OTHERS`. Notebook 01 và 02 sẽ thống kê số dòng, thiếu dữ liệu, phân phối cảm xúc và phân phối aspect thực tế từ dataset.
+Các aspect chính gồm `CAMERA`, `BATTERY`, `FEATURES`, `PERFORMANCE`, `SCREEN`, `PRICE`, `GENERAL`, `DESIGN`, `SER&ACC`, `OTHERS`.
 
-## 5. Cấu trúc project
+## 3. Cấu trúc project sau khi dọn
 
 ```text
 vietnamese-phone-sentiment-mining/
-├── configs/config.yaml
+├── configs/
+│   └── config.yaml
 ├── datasets/
 │   ├── raw/
+│   │   ├── Train.csv
+│   │   └── Test.csv
 │   ├── cleaned/
-│   ├── processed/
+│   │   ├── train_clean.csv
+│   │   └── test_clean.csv
 │   └── stopwords/
+│       └── vietnamese-stopwords.txt
 ├── notebooks/
 │   ├── 01_explore_dataset.ipynb
 │   ├── 02_preprocessing_text.ipynb
@@ -47,110 +48,196 @@ vietnamese-phone-sentiment-mining/
 │   ├── 04_svm_classification.ipynb
 │   └── 05_evaluation_visualization.ipynb
 ├── src/
+│   ├── __init__.py
 │   ├── preprocessing.py
 │   ├── clustering.py
 │   ├── classification.py
 │   └── visualization.py
 ├── results/
-│   ├── models/
 │   ├── csv/
 │   ├── figures/
-│   └── logs/
+│   └── models/
 ├── main.py
 ├── requirements.txt
+├── README.md
 └── README_VI.md
 ```
 
-## 6. Pipeline tổng thể
+Đã loại bỏ các file/thư mục không cần thiết: `src/__pycache__/`, `datasets/processed/`, `results/logs/`, `datasets/cleaned/trainprocessed.csv`, `datasets/cleaned/testprocessed.csv`.
+
+## 4. Pipeline xử lý
 
 ```text
 Raw CSV
   -> EDA
-  -> Lowercase, bỏ dấu câu, chuẩn hóa số, bỏ stopwords, ViTokenizer, bỏ từ lặp
+  -> Làm sạch văn bản
   -> Gán sentiment tổng thể và main_aspect
-  -> TF-IDF
-  -> K-Means clustering và so sánh với aspect
-  -> LinearSVC sentiment classification
-  -> Tổng hợp kết quả và insight kinh doanh
+  -> TF-IDF vectorization
+  -> K-Means clustering
+  -> So sánh cluster với aspect thật
+  -> LinearSVC classification
+  -> Đánh giá và trực quan hóa
 ```
 
-## 7. Luồng notebook
+Tiền xử lý trong `src/preprocessing.py` gồm:
 
-| Notebook | Mục đích | Output chính |
-|---|---|---|
-| `01_explore_dataset.ipynb` | Khám phá dữ liệu thô | Biểu đồ EDA trong `results/figures/` |
-| `02_preprocessing_text.ipynb` | Làm sạch văn bản, gán sentiment và aspect | `train_clean.csv`, `test_clean.csv` |
-| `03_tfidf_kmeans_clustering.ipynb` | TF-IDF, chọn K, phân cụm chủ đề | Model K-Means, vectorizer, `kmeans_clustered.csv` |
-| `04_svm_classification.ipynb` | Train và đánh giá LinearSVC | `svm_model.pkl`, `svm_results.csv`, confusion matrix |
-| `05_evaluation_visualization.ipynb` | Tổng hợp kết quả, insight, hạn chế | Biểu đồ tổng hợp và nhận xét cuối |
+1. Chuyển về chữ thường.
+2. Xóa dấu câu và emoji.
+3. Chuẩn hóa số thành token `number`.
+4. Xóa stopwords tiếng Việt.
+5. Tokenize bằng `pyvi.ViTokenizer`.
+6. Xóa từ lặp liên tiếp.
+7. Tách `label` thành `sentiment`, `main_aspect`, `aspects_list`.
 
-## 8. Tiền xử lý
+## 5. Visual EDA
 
-Pipeline tiền xử lý dùng `pyvi.ViTokenizer`:
+### Phân phối cảm xúc
 
-1. Lowercase để giảm trùng lặp từ do viết hoa.
-2. Bỏ dấu câu và emoji để giảm nhiễu.
-3. Chuẩn hóa số thành `number` để gom các biểu thức số.
-4. Bỏ stopwords tiếng Việt để giữ lại từ mang nhiều thông tin.
-5. Tokenize tiếng Việt bằng PyVi để nối các cụm từ như `màn_hình`.
-6. Bỏ từ lặp liên tiếp để giảm nhiễu từ cách viết kéo dài.
+![Sentiment distribution](results/figures/eda_sentiment_distribution.png)
 
-## 9. TF-IDF
+### Phân phối aspect chính
 
-TF-IDF biểu diễn bình luận thành vector dựa trên độ quan trọng của từ trong một bình luận so với toàn bộ tập dữ liệu. Cấu hình dùng unigram và bigram, `max_features=3000`, `min_df=2`, `max_df=0.95`, `sublinear_tf=True` để giảm ảnh hưởng của các từ xuất hiện quá nhiều lần trong cùng văn bản.
+![Aspect distribution](results/figures/eda_aspect_distribution.png)
 
-## 10. K-Means
+### Quan hệ số sao và cảm xúc
 
-K-Means được chạy với nhiều giá trị K từ 2 đến 10. Notebook 03 dùng Elbow Method và Silhouette Score để chọn K hợp lý. Sau khi phân cụm, mỗi cụm được gán tên theo `main_aspect` phổ biến nhất và được so sánh bằng crosstab giữa `cluster` và `main_aspect`.
+![Star vs sentiment](results/figures/eda_star_vs_sentiment.png)
 
-## 11. SVM
+### Top từ trong bình luận Positive và Negative
 
-Mô hình phân loại dùng `LinearSVC(C=1.0, class_weight='balanced')`. `class_weight='balanced'` giúp giảm thiên lệch khi số mẫu Positive, Negative, Neutral không đều nhau. Notebook 04 có baseline `DummyClassifier`, cross-validation 5-fold, confusion matrix và phân tích lỗi.
+![Top words](results/figures/eda_top_words_positive_negative.png)
 
-## 12. Kết quả kỳ vọng
+## 6. K-Means clustering
 
-| Hạng mục | Mục tiêu |
+Cấu hình TF-IDF:
+
+```python
+TfidfVectorizer(
+    max_features=3000,
+    ngram_range=(1, 2),
+    min_df=2,
+    max_df=0.95,
+    sublinear_tf=True
+)
+```
+
+K-Means được thử với `K=2..10`. K tốt nhất theo Silhouette trong lần chạy hiện tại là:
+
+| Metric | Giá trị |
 |---|---:|
-| Silhouette K-Means | ≥ 0.08 |
-| F1 Macro SVM | ≥ 0.75 |
-| SVM so với baseline | Tốt hơn ≥ 10% |
-| Cụm khớp aspect tốt | Match ratio ≥ 50% cho các cụm chính |
+| Best K | 10 |
+| Silhouette | 0.0086 |
 
-## 13. Hướng dẫn chạy
+Silhouette rất thấp, cho thấy TF-IDF + K-Means chưa tách chủ đề tốt trên tập bình luận này. Một số cụm vẫn có aspect chủ đạo rõ, ví dụ cluster `0` và `6` nghiêng mạnh về `CAMERA`, cluster `7` nghiêng về `BATTERY`.
+
+### Elbow và Silhouette
+
+![Elbow](results/figures/elbow.png)
+
+![Silhouette](results/figures/silhouette.png)
+
+### Kích thước cụm và PCA
+
+![Cluster size](results/figures/kmeans_cluster_size.png)
+
+![PCA K-Means](results/figures/pca_kmeans.png)
+
+### Sentiment theo cụm chủ đề
+
+![Sentiment by cluster](results/figures/sentiment_by_cluster.png)
+
+Word cloud từng cụm được lưu tại `results/figures/wordcloud_cluster_0.png` đến `wordcloud_cluster_9.png`.
+
+## 7. SVM sentiment classification
+
+Mô hình dùng `LinearSVC(C=1.0, class_weight="balanced", max_iter=2000)`. Baseline là `DummyClassifier(strategy="most_frequent")`.
+
+Kết quả sau khi chạy lại notebook và `main.py`:
+
+| Metric | Giá trị |
+|---|---:|
+| Baseline F1 macro | 0.2218 |
+| SVM F1 macro | 0.6631 |
+| SVM F1 weighted | 0.8000 |
+| Accuracy | 0.8008 |
+| Precision macro | 0.6635 |
+| Recall macro | 0.6629 |
+| Cross-validation F1 macro mean | 0.6419 |
+| Cross-validation F1 macro std | 0.0131 |
+
+SVM tốt hơn baseline rõ rệt, nhưng F1 macro còn bị kéo xuống do lớp `Neutral` ít mẫu và khó phân biệt hơn `Positive`/`Negative`.
+
+### Confusion matrix
+
+![Confusion matrix](results/figures/confusion_matrix.png)
+
+## 8. Notebook workflow
+
+Tất cả notebook đã được execute lại thành công theo thứ tự:
+
+| Notebook | Vai trò | Output chính |
+|---|---|---|
+| `01_explore_dataset.ipynb` | Khám phá dữ liệu thô | EDA figures |
+| `02_preprocessing_text.ipynb` | Làm sạch text, tạo sentiment/aspect | `train_clean.csv`, `test_clean.csv` |
+| `03_tfidf_kmeans_clustering.ipynb` | TF-IDF, chọn K, K-Means | model K-Means, vectorizer, cluster CSV, PCA/wordcloud |
+| `04_svm_classification.ipynb` | Train và đánh giá SVM | SVM model, metrics, confusion matrix |
+| `05_evaluation_visualization.ipynb` | Tổng hợp kết quả | insight và biểu đồ tổng hợp |
+
+## 9. Cách chạy
+
+Cài thư viện:
 
 ```bash
-pip install -r requirements.txt
-jupyter notebook
+python -m pip install -r requirements.txt
 ```
 
-Chạy notebook theo thứ tự:
-
-```text
-01 -> 02 -> 03 -> 04 -> 05
-```
-
-Có thể chạy nhanh pipeline chính bằng:
+Chạy toàn bộ pipeline nhanh:
 
 ```bash
 python main.py
 ```
 
-## 14. Hạn chế và hướng phát triển
+Chạy notebook theo thứ tự bằng Jupyter UI:
 
-Hạn chế:
+```bash
+python -m jupyter notebook
+```
 
-- TF-IDF không nắm đầy đủ ngữ nghĩa và phủ định như `không tốt`.
-- K-Means nhạy cảm với khởi tạo ngẫu nhiên và giả định cụm dạng cầu.
-- Stopwords có thể thiếu từ đặc thù lĩnh vực điện thoại.
-- Neutral thường khó phân loại vì ranh giới mờ với Positive và Negative.
+Hoặc execute notebook từ terminal:
 
-Hướng phát triển:
+```bash
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/01_explore_dataset.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/02_preprocessing_text.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/03_tfidf_kmeans_clustering.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/04_svm_classification.ipynb
+python -m jupyter nbconvert --to notebook --execute --inplace notebooks/05_evaluation_visualization.ipynb
+```
 
-- Thay TF-IDF bằng PhoBERT embedding.
-- Thử LDA hoặc BERTopic cho topic modeling.
-- Làm aspect-level sentiment thay vì gán một nhãn tổng thể cho cả bình luận.
-- Thu thập thêm dữ liệu để cân bằng nhãn.
+## 10. File kết quả quan trọng
 
-## 15. Kết luận
+| File | Ý nghĩa |
+|---|---|
+| `datasets/cleaned/train_clean.csv` | Train sau tiền xử lý |
+| `datasets/cleaned/test_clean.csv` | Test sau tiền xử lý |
+| `results/csv/kmeans_k_scores.csv` | Inertia và Silhouette theo từng K |
+| `results/csv/kmeans_cluster_summary.csv` | Aspect chủ đạo và match ratio mỗi cụm |
+| `results/csv/kmeans_clustered.csv` | Train data kèm cluster |
+| `results/csv/svm_metrics_summary.csv` | Metric tổng hợp của SVM |
+| `results/csv/svm_results.csv` | Dự đoán SVM trên tập test |
+| `results/models/tfidf_vectorizer.pkl` | TF-IDF vectorizer đã train |
+| `results/models/kmeans_model.pkl` | K-Means model |
+| `results/models/svm_model.pkl` | LinearSVC model |
 
-Kết luận cuối cùng cần điền sau khi chạy đủ 5 notebook. Notebook 05 sẽ tổng hợp số liệu thực tế để trả lời ba câu hỏi nghiên cứu: mức độ khớp của K-Means với aspect, F1 Macro của SVM và chủ đề có tỷ lệ phản hồi tiêu cực cao nhất.
+## 11. Kết luận
+
+SVM phân loại cảm xúc đạt kết quả khả quan so với baseline, đặc biệt ở accuracy và F1 weighted. Tuy nhiên F1 macro chỉ đạt khoảng `0.6631`, cho thấy mô hình vẫn cần cải thiện ở lớp ít mẫu hoặc khó phân biệt.
+
+K-Means với TF-IDF tạo được một số cụm có aspect chủ đạo, nhưng Silhouette `0.0086` rất thấp. Điều này cho thấy không gian TF-IDF thưa và bình luận đa chủ đề làm K-Means khó tách cluster rõ ràng.
+
+## 12. Hướng phát triển
+
+- Thử PhoBERT hoặc sentence embedding tiếng Việt thay cho TF-IDF.
+- Dùng BERTopic, NMF hoặc HDBSCAN cho topic modeling.
+- Chuyển từ sentiment tổng thể sang aspect-level sentiment.
+- Cân bằng dữ liệu hoặc tăng mẫu cho lớp `Neutral`.
+- Tinh chỉnh stopwords và thêm từ điển domain điện thoại.

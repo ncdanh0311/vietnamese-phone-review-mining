@@ -29,4 +29,3 @@ results:
   models_dir: results/models/
   csv_dir: results/csv/
   figures_dir: results/figures/
-  logs_dir: results/logs/

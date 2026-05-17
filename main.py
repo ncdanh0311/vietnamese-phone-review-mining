@@ -5,9 +5,27 @@ import pandas as pd
 import yaml
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
-from src.classification import cross_validate_svm, get_baseline_f1, prediction_results_dataframe, train_svm
-from src.clustering import build_tfidf, compare_cluster_vs_aspect, find_optimal_k, run_kmeans
+from src.classification import (
+    cross_validate_svm,
+    get_baseline_f1,
+    plot_confusion_matrix,
+    prediction_results_dataframe,
+    train_svm,
+)
+from src.clustering import (
+    build_tfidf,
+    compare_cluster_vs_aspect,
+    find_optimal_k,
+    plot_pca_clusters,
+    run_kmeans,
+)
 from src.preprocessing import preprocess_dataframe, read_filestopwords
+from src.visualization import (
+    plot_label_distribution,
+    plot_sentiment_by_cluster,
+    plot_star_vs_sentiment,
+    plot_top_words,
+)
 
 
 def load_config(path='configs/config.yaml'):
@@ -24,6 +42,9 @@ def ensure_dirs(config):
 def main():
     config = load_config()
     ensure_dirs(config)
+    figures_dir = Path(config['results']['figures_dir'])
+    csv_dir = Path(config['results']['csv_dir'])
+    models_dir = Path(config['results']['models_dir'])
 
     stop_words = read_filestopwords(config['data']['stopwords'])
     train = pd.read_csv(config['data']['train_raw'], encoding='utf-8')
@@ -34,6 +55,27 @@ def main():
     keep_cols = ['comment', 'sentiment', 'main_aspect', 'n_star', 'aspects_list']
     train_clean[keep_cols].to_csv(config['data']['train_clean'], index=False, encoding='utf-8-sig')
     test_clean[keep_cols].to_csv(config['data']['test_clean'], index=False, encoding='utf-8-sig')
+
+    plot_label_distribution(
+        train_clean,
+        'sentiment',
+        'Sentiment distribution in training data',
+        figures_dir / 'eda_sentiment_distribution.png',
+    )
+    plot_label_distribution(
+        train_clean,
+        'main_aspect',
+        'Main aspect distribution in training data',
+        figures_dir / 'eda_aspect_distribution.png',
+    )
+    plot_label_distribution(
+        train_clean,
+        'n_star',
+        'Star rating distribution in training data',
+        figures_dir / 'eda_star_distribution.png',
+    )
+    plot_star_vs_sentiment(train_clean, figures_dir / 'eda_star_vs_sentiment.png')
+    plot_top_words(train_clean, 'comment', 'sentiment', figures_dir / 'eda_top_words_positive_negative.png')
 
     vectorizer, X_train = build_tfidf(
         train_clean['comment'],
@@ -46,19 +88,34 @@ def main():
     scores = find_optimal_k(
         X_train,
         range(config['kmeans']['k_range'][0], config['kmeans']['k_range'][1] + 1),
-        save_path=config['results']['figures_dir'],
+        save_path=figures_dir,
     )
-    scores.to_csv('results/csv/kmeans_k_scores.csv', index=False, encoding='utf-8-sig')
+    scores.to_csv(csv_dir / 'kmeans_k_scores.csv', index=False, encoding='utf-8-sig')
     best_k = int(scores.sort_values('silhouette', ascending=False).iloc[0]['k'])
+
     kmeans, clusters, silhouette = run_kmeans(X_train, best_k, config['kmeans']['random_state'])
     train_clean['cluster'] = clusters
     _, cluster_summary = compare_cluster_vs_aspect(train_clean, 'cluster', 'main_aspect')
     cluster_names = dict(zip(cluster_summary['cluster'], cluster_summary['cluster_name']))
     train_clean['cluster_name'] = train_clean['cluster'].map(cluster_names)
-    train_clean.to_csv('results/csv/kmeans_clustered.csv', index=False, encoding='utf-8-sig')
-    cluster_summary.to_csv('results/csv/kmeans_cluster_summary.csv', index=False, encoding='utf-8-sig')
-    joblib.dump(kmeans, 'results/models/kmeans_model.pkl')
-    joblib.dump(vectorizer, 'results/models/tfidf_vectorizer.pkl')
+    train_clean.to_csv(csv_dir / 'kmeans_clustered.csv', index=False, encoding='utf-8-sig')
+    cluster_summary.to_csv(csv_dir / 'kmeans_cluster_summary.csv', index=False, encoding='utf-8-sig')
+
+    plot_label_distribution(
+        train_clean,
+        'cluster',
+        'K-Means cluster size',
+        figures_dir / 'kmeans_cluster_size.png',
+    )
+    plot_sentiment_by_cluster(
+        train_clean,
+        'cluster',
+        'sentiment',
+        figures_dir / 'sentiment_by_cluster.png',
+    )
+    plot_pca_clusters(X_train, clusters, cluster_names, figures_dir / 'pca_kmeans.png')
+    joblib.dump(kmeans, models_dir / 'kmeans_model.pkl')
+    joblib.dump(vectorizer, models_dir / 'tfidf_vectorizer.pkl')
 
     X_test = vectorizer.transform(test_clean['comment'])
     svm = train_svm(X_train, train_clean['sentiment'], C=config['svm']['C'])
@@ -76,15 +133,22 @@ def main():
         'cv_std': cv_scores.std(),
     }])
     svm_results = prediction_results_dataframe(svm, X_test, test_clean['sentiment'], test_clean)
-    svm_results.to_csv('results/csv/svm_results.csv', index=False, encoding='utf-8-sig')
-    metrics_summary.to_csv('results/csv/svm_metrics_summary.csv', index=False, encoding='utf-8-sig')
-    joblib.dump(svm, 'results/models/svm_model.pkl')
+    svm_results.to_csv(csv_dir / 'svm_results.csv', index=False, encoding='utf-8-sig')
+    metrics_summary.to_csv(csv_dir / 'svm_metrics_summary.csv', index=False, encoding='utf-8-sig')
+    plot_confusion_matrix(
+        svm,
+        X_test,
+        test_clean['sentiment'],
+        ['Negative', 'Neutral', 'Positive'],
+        figures_dir / 'confusion_matrix.png',
+    )
+    joblib.dump(svm, models_dir / 'svm_model.pkl')
 
     print(f'Best K: {best_k}')
     print(f'K-Means Silhouette: {silhouette:.4f}')
     print(f'Baseline F1 Macro: {baseline:.4f}')
     print(f'SVM F1 Macro: {metrics_summary.loc[0, "f1_macro"]:.4f}')
-    print('Đã lưu dữ liệu, mô hình và kết quả vào thư mục results/.')
+    print('Saved cleaned data, models, metrics, and figures to results/.')
 
 
 if __name__ == '__main__':
